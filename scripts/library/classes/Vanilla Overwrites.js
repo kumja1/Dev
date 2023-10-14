@@ -1,4 +1,4 @@
-import { Vector,Entity,Block, world } from "@minecraft/server";
+import { Vector,Entity,Block, world, EntityInventoryComponent,BlockInventoryComponent,Player } from "@minecraft/server";
 import { create } from "./Events";
 /**
  * @typedef BlockQueryOptions
@@ -38,3 +38,60 @@ create.afterEvents.itemVirtualized.subscribe(ev=>{
   console.warn(item.typeId)
 })
 
+Object.defineProperty(EntityInventoryComponent.prototype, "isFull", {
+/**
+ * @this {EntityInventoryComponent}
+ * @returns {boolean} Whether this container is full or not
+ */
+  get: function() {
+    return this.container.emptySlotsCount === 0 ? true: false;
+  }
+});
+
+Object.defineProperty(EntityInventoryComponent.prototype, "isEmpty", {
+  /**
+ * @this {EntityInventoryComponent}
+ * @returns {boolean} Whether this container is empty or not
+ */
+  get: function() {
+    return this.container.emptySlotsCount === 32 ? true: false;
+  }
+});
+
+
+Object.defineProperty(BlockInventoryComponent.prototype, "isEmpty", {
+  /**
+ * @this {BlockInventoryComponent}
+ * @returns {boolean} Whether this container is empty or not
+ */
+  get: function() {
+    return this.container.emptySlotsCount === 32 ? true: false;
+  }
+});
+
+
+
+Object.defineProperty(BlockInventoryComponent.prototype, "isFull", {
+  /**
+   * @this {BlockInventoryComponent}
+   * @returns {boolean} Whether this container is full or not
+   */
+    get: function() {
+      return this.container.emptySlotsCount === 0 ? true: false;
+    }
+  });
+/**
+ * @param {Entity} target
+ * @returns {boolean} Whether this entity sucessfully started riding the target entity
+ */
+  Player.prototype.startRiding = function(target){
+    target.getComponent('rideable').addRider(this)
+  }
+
+  /**
+ * @param {Entity} target
+ * @returns {boolean} Whether this entity sucessfully started riding the target entity
+ */
+  Entity.prototype.startRiding = function(target){
+    target.getComponent('rideable').addRider(this)
+  }
