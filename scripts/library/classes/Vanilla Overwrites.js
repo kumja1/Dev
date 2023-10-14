@@ -37,3 +37,4 @@ create.afterEvents.itemVirtualized.subscribe(ev=>{
   const {itemStack:item} = ev
   console.warn(item.typeId)
 })
+

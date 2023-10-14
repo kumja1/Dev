@@ -1,5 +1,7 @@
+import { system } from "@minecraft/server";
+
 function sleep(ms) {
-    return new Promise(resolve => setTimeout(resolve, ms));
+    return new Promise(resolve => system.runTimeout(resolve, ms));
 }
 
 function waitUntil(condition, interval = 100) {
@@ -8,14 +10,14 @@ function waitUntil(condition, interval = 100) {
             if (condition()) {
                 resolve();
             } else {
-                setTimeout(checkCondition, interval);
+                system.runInterval(checkCondition, interval);
             }
         };
         checkCondition();
     });
 }
 
-function repeatUntil(condition, task, interval = 100) {
+function repeatUntil(condition, task, interval = 1) {
     return new Promise(async resolve => {
         while (!condition()) {
             await task();
