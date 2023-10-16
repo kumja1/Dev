@@ -2,14 +2,13 @@ import { ItemStack, Player, system, world } from '@minecraft/server';
 import {waitUntil as wait} from '../functions/util'
 
 
-
 /**
 * Generates a unique subscriber ID.
 * @private
 * @returns {string} A unique subscriber ID.
 */
 function generateId() {
-   return Math.random().toString(36).substr(2, 10);
+   return Math.random().toString(36).substring(2, 10);
 }
 /**
  * Represents a signal for the itemVirtualizedAfter event in Create.
@@ -62,6 +61,8 @@ subscribe(callback = (arg) => {
     unsubscribe(subscriberId){
         delete this.subscribers[subscriberId];
     }
+
+    
 }
 /**
  * @typedef ItemVirtualized
@@ -82,6 +83,7 @@ class ItemVirtualizedAfterEvent {
         this.types = types;
         /**
          * @description itemStack about to be virtualized.
+         * @readonly
          */
         this.itemStack = this.types.itemStack;
     }
@@ -98,7 +100,13 @@ class MechanicalMixerProcessAfterEvent {
      * @param {MixerProcess} types - The event data containing recipe information.
      */
     constructor(types) {
+          /**
+         * @readonly
+         */
         this.recipe = types.recipe;
+          /**
+         * @readonly
+         */
         this.name = types.recipe.name;
     }
 }
@@ -167,10 +175,6 @@ class ItemVirtualizedBeforeEventSignal {
          * @private
          */
         this.subscribers = {};
-         /**
-         * @private
-         */
-        this.canceled = false
     }
 
 /**
@@ -190,14 +194,12 @@ subscribe(callback = (arg) => {
     const eventCallback = (ev) => {
         const { id, message } = ev;
         if (id === 'create:itemVirtualizedBeforeEvent') {
-           if(this.canceled === true) return;
+            let data = JSON.parse(message)
             // Create an instance of ItemVirtualizedBeforeEvent and use it.
-            const eventData = new ItemVirtualizedBeforeEvent(JSON.parse(message));
+            const eventData = new ItemVirtualizedBeforeEvent(data);
             if (subscriberId in this.subscribers) {
                 this.subscribers[subscriberId](eventData);
             }
-            wait(message === 'true')
-            this.canceled = true
          
 
         }
@@ -240,7 +242,7 @@ class ItemVirtualizedBeforeEvent {
         this.itemStack = this.types.itemStack;
         this.canceled = this.types.canceled
         wait(this.canceled===true)
-        create.brodcastEvent('itemVirtualizedBeforeEvent',false,JSON.stringify(this.canceled))
+        create.brodcastEvent('itemVirtualizedBeforeEventCancelled',true,JSON.stringify(this.canceled))
      
     }
 }
@@ -260,10 +262,6 @@ class MechanicalMixerProcessBeforeEventSignal {
          * @private
          */
         this.subscribers = {};
-         /**
-         * @private
-         */
-        this.canceled = false;
     }
 
     /**
@@ -282,7 +280,6 @@ class MechanicalMixerProcessBeforeEventSignal {
 
         const eventCallback = (ev) => {
             const { id, message } = ev;
-            if(this.canceled===true) return;
             if (id === 'create:mechanicalMixerProcessAfterEvent') {
                 let data = JSON.parse(message)
                 // Create an instance of MechanicalMixerProcessAfterEvent and use it.
@@ -290,8 +287,6 @@ class MechanicalMixerProcessBeforeEventSignal {
                 if (subscriberId in this.subscribers) {
                     this.subscribers[subscriberId](eventData);
                 }
-                wait(message === 'true')
-            this.canceled = true
             }
         };
 
@@ -321,7 +316,14 @@ class MechanicalMixerProcessBeforeEvent {
         this.name = types.recipe.name;
         this.canceled = types.canceled
         wait(this.canceled===true)
-        create.brodcastEvent('mechanicalMixerProcess',false,JSON.stringify(this.canceled))
+        create.brodcastEvent('mechanicalMixerProcessBeforeEventCancelled',true,JSON.stringify(this.canceled))
+    }
+/**
+ * @param {{name:string}} recipe
+ * Sets the recipe it should process(Note:will only process recipe if it has materials for it)
+ */
+    setRecipe(recipe){
+create.brodcastEvent('mechanicalMixerProcess',true,JSON.stringify(recipe))
     }
 }
 
@@ -332,23 +334,45 @@ class MechanicalMixerProcessBeforeEvent {
  */
 class Create {
     constructor() {
+          /**
+         * @readonly
+         */
         this.afterEvents = new CreateAfterEvents();
+          /**
+         * @readonly
+         */
         this.beforeEvents = new CreateBeforeEvents();
     }
 
     /**
      * @param {string} eventName
      * @param {string} data
-     * @param {boolean} wait
+     * @param {boolean} isResponse Whether this is a response to a event
      */
-    brodcastEvent(eventName,wait = false,data){
-        this.runCommand(`scriptevent create:${eventName} ${data}`,'overworld')
+    brodcastEvent(eventName,isResponse = false,data){
+
+       return isResponse ? this.runCommand(`scriptevent create:${eventName+'response'} ${data}`,'overworld') : this.runCommand(`scriptevent create:${eventName} ${data}`,'overworld')
     
 
     }
-
-    runCommand(command,dimension){
-        world.getDimension(dimension).runCommand(command)
+/**
+ * @param {string} command
+ * @param {string} dimension
+ */
+    runCommand(command,dimension='overworld'){
+        return world.getDimension(dimension).runCommand(command)
+    }
+    
+/**
+ * @param {string} eventName
+ * @param {function(ScriptEventCommandMessageAfterEvent):void} callback
+ */
+    waitForResponse(eventName,callback){
+        system.afterEvents.scriptEventReceive.subscribe(ev=>{
+            const {id} = ev
+            wait(id === eventName + 'response')
+            callback(ev)
+        },{namespaces:['create']})
     }
 }
 
@@ -358,7 +382,13 @@ class Create {
  */
 class CreateAfterEvents {
     constructor() {
+        /**
+         * @readonly
+         */
         this.itemVirtualized = new ItemVirtualizedAfterEventSignal();
+          /**
+         * @readonly
+         */
         this.mixerProcess = new MechanicalMixerProcessAfterEventSignal()
     }
 }
@@ -369,7 +399,13 @@ class CreateAfterEvents {
  */
 class CreateBeforeEvents {
     constructor() {
+          /**
+         * @readonly
+         */
         this.itemVirtualized = new ItemVirtualizedBeforeEventSignal();
+          /**
+         * @readonly
+         */
         this.mixerProcess = new MechanicalMixerProcessBeforeEventSignal()
     }
 }
@@ -377,7 +413,9 @@ class CreateBeforeEvents {
 // Export the Create instance and classes.
 export const create = new Create();
 export { CreateAfterEvents, CreateBeforeEvents };
+create.waitForResponse('mechanicalMixerProcess',()=>{
 
+})
 create.afterEvents.mixerProcess.subscribe(ev=>{
     const {name} = ev 
     console.warn(name)
@@ -387,9 +425,10 @@ create.afterEvents.mixerProcess.subscribe(({name,recipe})=>{
 })
 
 create.beforeEvents.mixerProcess.subscribe(ev=>{
-    const {name} = ev
+    const {name,setRecipes} = ev
     ev.canceled = true
 })
 
-
-console.warn(cooldown);
+create.waitForResponse('mechanicalMixerProcessBeforeEventCancelled',(ev)=>{
+   ev
+})
