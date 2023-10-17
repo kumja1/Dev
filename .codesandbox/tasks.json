@@ -6,11 +6,21 @@
       "command": "npm install"
     },
     {
-      "command": "npm install -g npm",
-      "name": "n"
+      "name": "n",
+      "command": "npm install -g npm"
     }
   ],
 
   // These tasks can be run from CodeSandbox. Running one will open a log in the app.
-  "tasks": {}
+  "tasks": {
+    "pip install": {
+      "name": "pip install",
+      "command": "pip install",
+      "runAtStart": true
+    },
+    "CSB_RUN_OUTSIDE_CONTAINER=1 devcontainer templates apply --template-id \"ghcr.io/devcontainers/templates/javascript-node\" --template-args '{}' --features '[]'": {
+      "name": "Environment setup",
+      "command": "CSB_RUN_OUTSIDE_CONTAINER=1 devcontainer templates apply --template-id \"ghcr.io/devcontainers/templates/javascript-node\" --template-args '{}' --features '[]'"
+    }
+  }
 }

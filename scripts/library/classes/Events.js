@@ -1,4 +1,4 @@
-import { ItemStack, Player, system, world } from '@minecraft/server';
+import { ItemStack, Player, system, world,ScriptEventCommandMessageAfterEvent,compone, Block } from '@minecraft/server';
 import {waitUntil as wait} from '../functions/util'
 
 
@@ -428,7 +428,31 @@ create.beforeEvents.mixerProcess.subscribe(ev=>{
     const {name,setRecipes} = ev
     ev.canceled = true
 })
-
+let canceled;
 create.waitForResponse('mechanicalMixerProcessBeforeEventCancelled',(ev)=>{
-   ev
+    const {message} = ev
+    const data = JSON.parse(message)
+    if(data.canceled === true){
+canceled = data.canceled
+    } 
 })
+/**
+ * @param {import('@minecraft/server').Vector3} start
+ * @param {import('@minecraft/server').Vector3} end
+ */
+function splitLoc(start,end){
+    const midX = (start.x+end.x)/2
+    const midY = (start.y+end.y)/2
+    const midZ = (start.z+end.z)/2
+
+    const destination1 = {x:midX,y:midY,z:midZ}
+    const destination2 = {x:end.x,y:end.y,z:end.z}
+    const location = [
+        destination1,
+        destination2
+    ]
+    return location
+
+}
+
+Block.prototype.getComponent('minecraft:inventory').container.

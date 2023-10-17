@@ -82,6 +82,12 @@ class RecipeBuilder {
   const cakeRecipe = recipeBuilder.getRecipe('Cake');
   console.log('Recipe:', cakeRecipe);
   
+  const builder = new RecipeBuilder();
+
+
+builder.createRecipe("minecraft:iron_axe")
+    .addIngredients("minecraft:iron_axe", [{item:"minecraft:iron_ingot",count:3},{item:minecraft:stick,count:2}])
+    .setResult("minecraft:iron_axe", "minecraft:iron_axe", 1);
   // Create a RecipeBuilder instance and chain the recipe creation and definition
   const recipeBuilder = new RecipeBuilder()
     .createRecipe('andesite')
