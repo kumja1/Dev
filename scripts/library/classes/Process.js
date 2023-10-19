@@ -43,7 +43,7 @@ export class ProcessHandler {
         yield;
       }
 
-      system.clearRunInterval(intervalId);
+      system.clearRun(intervalId);
       this.activeProcesses.delete(processId);
 
       Logger.log('[Process]', `Process with ID ${processId} completed.`, 'info');
@@ -110,7 +110,9 @@ export class ProcessHandler {
   *getStoppedProcesses() {
     yield* this.stoppedProcesses;
   }
-
+/**
+ * @private
+ */
   *printProgress() {
     for (const [processId, { startTime }] of this.activeProcesses.entries()) {
       const process = this.processQueue.find((p) => p.processId === processId);
@@ -125,7 +127,9 @@ export class ProcessHandler {
       }
     }
   }
-
+/**
+ * @private
+ */
   generateProgressBar(percent) {
     const barLength = 20;
     const completedLength = Math.floor(percent * barLength);

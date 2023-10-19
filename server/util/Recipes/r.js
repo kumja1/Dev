@@ -1,88 +1,125 @@
+import { ActionFormData } from "@minecraft/server-ui";
+import { world } from '@minecraft/server'
+
 /**
  * A class for building and managing recipes.
  */
-class RecipeBuilder {
+export class RecipeBuilder {
+  /**
+   * Creates a new RecipeBuilder instance.
+   */
+  constructor() {
     /**
-     * Creates a new RecipeBuilder instance.
+     * @type {Map<string, { ingredients: { [item: string]: number }, extraItems: Map<string, number> }>}
+     * A map to store recipes.
      */
-    constructor() {
-      /**
-       * @type {Map<string, { ingredients: { [key: string]: number }, extraItems: Map<string, number> }>}
-       * A map to store recipes.
-       */
-      this.recipes = new Map();
+    this.recipes = new Map();
+  }
+
+  /**
+   * Creates a new recipe with the given name.
+   * @param {string} name - The name of the recipe.
+   * @returns {RecipeBuilder} The RecipeBuilder instance for method chaining.
+   */
+  createRecipe(name) {
+    this.recipes.set(name, {
+      ingredients: {},
+      extraItems: new Map(),
+    });
+    return this;
+  }
+
+  /**
+   * Adds ingredients to the specified recipe.
+   * @param {string} name - The name of the recipe.
+   * @param {Object.<string, number>} ingredients - An object where keys are ingredient names and values are the amounts needed.
+   * @returns {RecipeBuilder} The RecipeBuilder instance for method chaining.
+   */
+  addIngredients(name, ingredients) {
+    const recipe = this.recipes.get(name);
+    if (recipe) {
+      recipe.ingredients = ingredients;
     }
-  
-    /**
-     * Creates a new recipe with the given name.
-     * @param {string} name - The name of the recipe.
-     * @returns {RecipeBuilder} The RecipeBuilder instance for method chaining.
-     */
-    createRecipe(name) {
-      this.recipes.set(name, {
-        ingredients: {},
-        extraItems: new Map(),
-      });
-      return this;
+    return this;
+  }
+
+  /**
+   * Adds an extra item with a chance to the specified recipe.
+   * @param {string} name - The name of the recipe.
+   * @param {string} extraItem - The name of the extra item.
+   * @param {number} chance - The chance of obtaining the extra item (between 0 and 1).
+   * @returns {RecipeBuilder} The RecipeBuilder instance for method chaining.
+   */
+  addExtra(name, extraItem, chance) {
+    const recipe = this.recipes.get(name);
+    if (recipe) {
+      recipe.extraItems.set(extraItem, chance);
     }
-  
-    /**
-     * Adds ingredients to the specified recipe.
-     * @param {string} name - The name of the recipe.
-     * @param {Object.<string, number>} ingredients - An object where keys are ingredient names and values are the amounts needed.
-     * @returns {RecipeBuilder} The RecipeBuilder instance for method chaining.
-     */
-    addIngredients(name, ingredients) {
-      const recipe = this.recipes.get(name);
-      if (recipe) {
-        recipe.ingredients = ingredients;
+    return this;
+  }
+
+  /**
+   * Retrieves a recipe by name.
+   * @param {string} name - The name of the recipe.
+   * @returns {{ingredients: {item: string, count: number}[], extraItems: Map<string, number>}} The recipe object or undefined if not found.
+   */
+  getRecipe(name) {
+    return this.recipes.get(name);
+  }
+
+  /**
+   * Lists all available recipe names.
+   * @returns {string[]} An array of recipe names.
+   */
+  listRecipes() {
+    return Array.from(this.recipes.keys());
+  }
+
+  /**
+   * Retrieves all recipe objects from the map.
+   * @returns {Map<string, { ingredients: {item: string, count: number}[], extraItems: Map<string, number> }} A map of all recipes.
+   */
+  getAllRecipes() {
+    return this.recipes.entries();
+  }
+
+  /**
+   * Finds recipes containing a specific ingredient.
+   * @param {string} ingredientName - The name of the ingredient to search for.
+   * @returns {string[]} An array of recipe names containing the ingredient.
+   */
+  findRecipes(ingredientName) {
+    const match = [];
+    for (const [recipeName, recipeData] of this.recipes) {
+      if (ingredientName in recipeData.ingredients) {
+        match.push(recipeName);
       }
-      return this;
     }
-  
-    /**
-     * Adds an extra item with a chance to the specified recipe.
-     * @param {string} name - The name of the recipe.
-     * @param {string} extraItem - The name of the extra item.
-     * @param {number} chance - The chance of obtaining the extra item (between 0 and 1).
-     * @returns {RecipeBuilder} The RecipeBuilder instance for method chaining.
-     */
-    addExtra(name, extraItem, chance) {
-      const recipe = this.recipes.get(name);
-      if (recipe) {
-        recipe.extraItems.set(extraItem, chance);
-      }
-      return this;
-    }
-  
-    /**
-     * Retrieves a recipe by name.
-     * @param {string} name - The name of the recipe.
-     * @returns {object | undefined} The recipe object or undefined if not found.
-     */
-    getRecipe(name) {
-      return this.recipes.get(name);
-    }
-  
-    /**
-     * Lists all available recipe names.
-     * @returns {string[]} An array of recipe names.
-     */
-    listRecipes() {
-      return Array.from(this.recipes.keys());
+    return match;
+  }
+  /**
+   * Find all recipes that match a set of ingredients.
+   * @param {string[]} ingredientList - An array of ingredient item names.
+   * @returns {string[]} An array of recipe names that match the provided ingredients.
+   */
+findMatching(ingredientList) {
+  const matchingRecipes = [];
+  for (const [recipeName, recipeData] of this.recipes) {
+    const ingredients = recipeData.ingredients;
+    if (
+      ingredients.length === ingredientList.length &&
+      ingredients.every((ingredient, index) => ingredient.item === ingredientList[index])
+    ) {
+      matchingRecipes.push(recipeName);
     }
   }
-  
-  // Example usage:
-  const recipeBuilders = new RecipeBuilder()
-    .createRecipe('Cake')
-    .addIngredients('Cake', { 'Egg': 1, 'Sugar': 2, 'Wheat': 3, 'Chocolate': 2 })
-    .addExtra('Cake', 'ExtraFrosting', 0.5);
-  
-  const cakeRecipe = recipeBuilder.getRecipe('Cake');
-  console.log('Recipe:', cakeRecipe);
-  
-  const builder = new RecipeBuilder();
+  return matchingRecipes;
+}
+}
+
+// Create a RecipeBuilder instance and define recipes
+const builder = new RecipeBuilder();
+
 
 
 builder.createRecipe("minecraft:iron_axe")

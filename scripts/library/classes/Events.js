@@ -1,7 +1,22 @@
 import { ItemStack, Player, system, world,ScriptEventCommandMessageAfterEvent,compone, Block } from '@minecraft/server';
 import {waitUntil as wait} from '../functions/util'
 
+/**
+ * @typedef ItemVirtualized
+ * @property {ItemStack} itemStack
+ */
 
+/**
+ * @typedef MixerProcess
+ * @property {{name: string}} recipe
+ * @property {boolean} [canceled=false]
+ */
+
+/**
+ * @typedef CrafterCrafting
+ * @property {{item:string,count:number,current:number}[]} ingredients
+ * @property {{ingredients: { item: string; count: number; current: number }[]; extraItems: Map<string, number>;}} recipe
+ */
 /**
 * Generates a unique subscriber ID.
 * @private
@@ -64,10 +79,7 @@ subscribe(callback = (arg) => {
 
     
 }
-/**
- * @typedef ItemVirtualized
- * @property {ItemStack} itemStack
- */
+
 /**
  * Represents an event object for itemVirtualizedAfter.
  */
@@ -89,11 +101,7 @@ class ItemVirtualizedAfterEvent {
     }
 }
 
-/**
- * @typedef MixerProcess
- * @property {{name: string}} recipe
- * @property {boolean} [canceled=false]
- */
+
 class MechanicalMixerProcessAfterEvent {
     /**
      * Creates an instance of MechanicalMixerProcessAfterEvent.
@@ -237,7 +245,7 @@ class ItemVirtualizedBeforeEvent {
          */
         this.types = types;
         /**
-         * @description itemStack that was virtualized.
+         * @description itemStack about to be virtualized.
          */
         this.itemStack = this.types.itemStack;
         this.canceled = this.types.canceled
@@ -323,11 +331,77 @@ class MechanicalMixerProcessBeforeEvent {
  * Sets the recipe it should process(Note:will only process recipe if it has materials for it)
  */
     setRecipe(recipe){
-create.brodcastEvent('mechanicalMixerProcess',true,JSON.stringify(recipe))
+create.brodcastEvent('mechanicalMixerProcessRecipeSet',true,JSON.stringify(recipe))
+    }
+}
+
+/**
+ * Represents a signal for the CrafterStartCraftingAfter event in Create.
+ * @class
+ */
+class CrafterStartCraftingAfterEventSignal {
+    /**
+     * Creates an instance of CrafterStartCraftingAfterEvent Signal.
+     */
+    constructor() {
+        /**
+         * @private
+         */
+        this.subscribers = {};
+    }
+
+    /**
+     * Subscribes to the CrafterStartCraftingAfter event and provides a callback.
+     * @param {function(CrafterStartCraftingAfterEvent): void} callback - The callback function to be executed when the event is triggered.
+     * @returns {string} A subscriber ID for unsubscribing later.
+     * @example
+     * const listener = create.afterEvents.crafterStartCrafting.subscribe((event) => {
+     *     // Handle the event here
+     * });
+     * create.afterEvents.crafterStartCrafting.unsubscribe(listener);
+     */
+    subscribe(callback = (arg) => {
+        const subscriberId = generateId();
+        this.subscribers[subscriberId] = callback;
+
+        const eventCallback = (ev) => {
+            const { id, message } = ev;
+            if (id === 'create:mechanicalMixerProcessAfterEvent') {
+                let data = JSON.parse(message)
+                // Create an instance of MechanicalMixerProcessAfterEvent and use it.
+                const eventData = new MechanicalMixerProcessBeforeEvent(data);
+                if (subscriberId in this.subscribers) {
+                    this.subscribers[subscriberId](eventData);
+                }
+            }
+        };
+
+        system.afterEvents.scriptEventReceive.subscribe(eventCallback);
+        return subscriberId;
+    })
+
+    /**
+     * Unsubscribes a subscriber from the CrafterStartCraftingAfter event.
+     * @param {string} subscriberId - The ID of the subscriber to unsubscribe.
+     */
+    unsubscribe(subscriberId) {
+        delete this.subscribers[subscriberId];
     }
 }
 
 
+
+
+class CrafterStartCraftingAfterEvent {
+    /**
+     * Creates an instance of CrafterStartCraftingAfterEvent.
+     * @param {CrafterCrafting} types - The event data containing recipe information.
+     */
+    constructor(types) {
+        this.recipe = types.recipe;
+        this.ingredients = types.ingredients;
+    }
+}
 /**
  * Represents the Create Class, providing access to afterEvents and beforeEvents of Create's Systems.
  * @class
@@ -388,8 +462,14 @@ class CreateAfterEvents {
         this.itemVirtualized = new ItemVirtualizedAfterEventSignal();
           /**
          * @readonly
+         * This is after a mixer processes a recipe
          */
         this.mixerProcess = new MechanicalMixerProcessAfterEventSignal()
+          /**
+         * @readonly
+         * This is after the crafter has started crafting
+         */
+        this.crafterStartCrafting;
     }
 }
 
@@ -409,6 +489,7 @@ class CreateBeforeEvents {
         this.mixerProcess = new MechanicalMixerProcessBeforeEventSignal()
     }
 }
+
 
 // Export the Create instance and classes.
 export const create = new Create();
@@ -455,4 +536,49 @@ function splitLoc(start,end){
 
 }
 
-Block.prototype.getComponent('minecraft:inventory').container.
+const instances = {};
+
+class DynamicPropertiesDB {
+    /**
+     * @param {string} name
+     */
+    constructor(name) {
+        if (typeof name !== 'string') {
+            throw new Error('Name must be a string.');
+        }
+        if (instances[name]) {
+            return instances[name];
+        }
+        this.name = name;
+        instances[name] = this;
+    }
+
+    set(value) {
+        if (typeof value === 'object') {
+            value = JSON.stringify(value);
+        }    
+        world.setDynamicProperty(this.name, value);
+    }
+
+    get(key = undefined) {
+        const storedValue = world.getDynamicProperty(this.name);
+    
+        if (typeof storedValue === 'string') {
+            try {
+                const parsedValue = JSON.parse(storedValue);
+                if (key !== undefined && typeof parsedValue === 'object' && key in parsedValue) {
+                    return parsedValue[key];
+                }
+                return parsedValue;
+            } catch (error) {
+                return storedValue;
+            }
+        }
+    
+        return storedValue;
+    }
+    
+    clear() {
+        world.setDynamicProperty(this.name, null);
+    }
+}
