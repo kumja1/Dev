@@ -1,21 +1,30 @@
-import { ItemStack, Player, system, world,ScriptEventCommandMessageAfterEvent,compone, Block } from '@minecraft/server';
-import {waitUntil as wait} from '../functions/util'
+import { ItemStack, Player, system, world,ScriptEventCommandMessageAfterEvent, Block } from '@minecraft/server';
+import {waitUntil as wait} from '../functions/extensions'
 
 /**
  * @typedef ItemVirtualized
  * @property {ItemStack} itemStack
+ * @property {import('@minecraft/server').Vector3} location
  */
 
 /**
  * @typedef MixerProcess
  * @property {{name: string}} recipe
  * @property {boolean} [canceled=false]
+ * @property {Block} block
  */
 
 /**
  * @typedef CrafterCrafting
  * @property {{item:string,count:number,current:number}[]} ingredients
  * @property {{ingredients: { item: string; count: number; current: number }[]; extraItems: Map<string, number>;}} recipe
+ * @property {Block} block
+ */
+
+/**
+ * @typedef MechanicalPress
+ * @property {Block} block
+ * 
  */
 /**
 * Generates a unique subscriber ID.
@@ -249,9 +258,10 @@ class ItemVirtualizedBeforeEvent {
          */
         this.itemStack = this.types.itemStack;
         this.canceled = this.types.canceled
-        wait(this.canceled===true)
+        system.run(async ()=>{
+        await wait(this.canceled===true)
         create.brodcastEvent('itemVirtualizedBeforeEventCancelled',true,JSON.stringify(this.canceled))
-     
+    })
     }
 }
 
@@ -323,9 +333,12 @@ class MechanicalMixerProcessBeforeEvent {
         this.recipe = types.recipe;
         this.name = types.recipe.name;
         this.canceled = types.canceled
-        wait(this.canceled===true)
+        system.run(async ()=>{
+       await wait(this.canceled===true)
         create.brodcastEvent('mechanicalMixerProcessBeforeEventCancelled',true,JSON.stringify(this.canceled))
+    })
     }
+
 /**
  * @param {{name:string}} recipe
  * Sets the recipe it should process(Note:will only process recipe if it has materials for it)
@@ -400,6 +413,7 @@ class CrafterStartCraftingAfterEvent {
     constructor(types) {
         this.recipe = types.recipe;
         this.ingredients = types.ingredients;
+        this.block = types.block
     }
 }
 /**
@@ -438,13 +452,14 @@ class Create {
     }
     
 /**
- * @param {string} eventName
- * @param {function(ScriptEventCommandMessageAfterEvent):void} callback
+ * Allows you to listen/wait for a response(likely data whether it was canceled,the recipe was updated etc...)
+ * @param {string} eventName event to listen for
+ * @param {function(ScriptEventCommandMessageAfterEvent):void} callback the callback to excute when you recieve the events response
  */
-    waitForResponse(eventName,callback){
+    async waitForResponse(eventName,callback){
         system.afterEvents.scriptEventReceive.subscribe(ev=>{
             const {id} = ev
-            wait(id === eventName + 'response')
+            await wait(id === eventName + 'response')
             callback(ev)
         },{namespaces:['create']})
     }
@@ -469,7 +484,7 @@ class CreateAfterEvents {
          * @readonly
          * This is after the crafter has started crafting
          */
-        this.crafterStartCrafting;
+        this.crafterStartCrafting = new CrafterStartCraftingAfterEventSignal();
     }
 }
 
